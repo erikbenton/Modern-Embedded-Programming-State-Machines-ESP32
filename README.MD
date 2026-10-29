@@ -7,3 +7,6 @@ After having a difficult time with newer versions of Keil uVision locking my Tiv
 
 #### Note:
 Please ensure the you have enabled FreeRTOS's ```vApplicationTickHook``` using the config setting: ```configUSE_TICK_HOOK```
+
+
+### This is for Lesson 34, which is the "base-code/start" of the State Machine course
