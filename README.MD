@@ -7,3 +7,5 @@ After having a difficult time with newer versions of Keil uVision locking my Tiv
 
 #### Note:
 Please ensure the you have enabled FreeRTOS's ```vApplicationTickHook``` using the config setting: ```configUSE_TICK_HOOK```
+
+### The "End of Lesson" code will be added as branches to this repo.
