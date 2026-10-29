@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include "portmacro.h"
 
 void Active_ctor(Active *const me, DispatchHandler dispatch)
 {
@@ -59,4 +60,59 @@ void Active_post(Active *const me, Event const *const e)
 {
     BaseType_t res = xQueueSend(me->queue, e, pdTICKS_TO_MS(100));
     assert(res == pdTRUE);
+}
+
+/* Time Events */
+
+#define MAX_TIME_EVENTS 10
+
+static portMUX_TYPE tEvt_mutex = portMUX_INITIALIZER_UNLOCKED; /* mutex for critical sections */
+
+static TimeEvent *tEvts[MAX_TIME_EVENTS]; /* All TimeEvents in the application */
+static uint8_t tEvtNum;                   /* Current number of TimeEvents */
+
+void TimeEvent_ctor(TimeEvent *const me, Signal sig, Active *act)
+{
+    me->super.sig = sig;
+    me->act = act;
+    me->timeout = 0U;
+    me->interval = 0U;
+
+    taskENTER_CRITICAL(&tEvt_mutex);
+    assert(tEvtNum < (sizeof(tEvts) / sizeof(tEvts[0])));
+    tEvts[tEvtNum] = me;
+    tEvtNum++;
+    taskEXIT_CRITICAL(&tEvt_mutex);
+}
+
+void TimeEvent_arm(TimeEvent *const me, uint32_t timeout, uint32_t interval)
+{
+    taskENTER_CRITICAL(&tEvt_mutex);
+    me->timeout = timeout;
+    me->interval = interval;
+    taskEXIT_CRITICAL(&tEvt_mutex);
+}
+
+void TimeEvent_disarm(TimeEvent *const me)
+{
+    taskENTER_CRITICAL(&tEvt_mutex);
+    me->timeout = 0U;
+    taskEXIT_CRITICAL(&tEvt_mutex);
+}
+
+void TimeEvent_tick(void)
+{
+    for (uint8_t i = 0; i < tEvtNum; i++)
+    {
+        TimeEvent *t = tEvts[i];
+        assert(t);
+        if (t->timeout > 0U) // if TimeEvent is armed
+        {
+            if (--(t->timeout) == 0U) // and if it has expired
+            {
+                Active_post(t->act, &t->super); // post the TimeEvent for its AO
+                t->timeout = t->interval;       // reset the timeout interval
+            }
+        }
+    }
 }

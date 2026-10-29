@@ -10,8 +10,8 @@ typedef uint16_t Signal;
 
 enum ReservedSignals
 {
-    INIT_SIG, // Initialization signal
-    USER_SIG
+    INIT_SIG, /* Initialization signal */
+    USER_SIG  /* User defined signal */
 };
 
 typedef struct
@@ -38,5 +38,21 @@ void Active_start(Active *const me,
                   size_t queue_length,
                   size_t event_size);
 void Active_post(Active *const me, Event const *const e);
+
+/* Time Events */
+
+typedef struct
+{
+    Event super;
+    Active *act;
+    uint32_t timeout;
+    uint32_t interval;
+} TimeEvent;
+
+void TimeEvent_ctor(TimeEvent *const me, Signal sig, Active *act);
+void TimeEvent_arm(TimeEvent *const me, uint32_t timeout, uint32_t interval);
+void TimeEvent_disarm(TimeEvent *const me);
+
+void TimeEvent_tick(void);
 
 #endif
