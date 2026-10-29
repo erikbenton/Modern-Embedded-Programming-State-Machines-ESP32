@@ -9,8 +9,11 @@
 typedef struct
 {
     Active super;
+    enum {
+        OFF_STATE,
+        ON_STATE
+    } state;
     TimeEvent tEvt;
-    bool is_led_on;
     uint32_t blink_time;
 } BlinkyButton;
 
