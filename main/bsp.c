@@ -1,45 +1,34 @@
 #include "bsp.h"
 #include "driver/gpio.h"
-#include "soc/gpio_periph.h"
-#include "hal/gpio_ll.h"
 
-static Active *AO_BlinkyButton;
+static uint32_t volatile l_tick_ctr;
+static portMUX_TYPE isr_mutex = portMUX_INITIALIZER_UNLOCKED; /* mutex for critical sections */
 
 // Must enable FreeRTOS tick hook in order to use: configUSE_TICK_HOOK
 void vApplicationTickHook(void)
 {
-    static struct ButtonsDebouncing
-    {
-        uint32_t depressed;
-        uint32_t previous;
-    } buttons = {0U, 0U};
-    uint32_t current;
-    uint32_t tmp;
+    ++l_tick_ctr;
+}
 
-    TimeEvent_tick(); /* process AO Time Events */
+uint32_t BSP_tick_ctr(void)
+{
+    uint32_t tick_ctr;
 
-    // current = (uint32_t)gpio_get_level(PIN_SW1) << PIN_SW1;
-    current = GPIO.in;                                 /* read level of 0-31 GPIO pins */
-    tmp = buttons.depressed;                           /* save the debounced depressed buttons */
-    buttons.depressed |= (buttons.previous & current); /* set depressed */
-    buttons.depressed &= (buttons.previous | current); /* clear released */
-    buttons.previous = current;                        /* update the history */
-    tmp ^= buttons.depressed;                          /* changed debounced depressed */
-    if ((tmp & SW1) != 0U)
-    { /* debounced SW1 state changed? */
-        if ((buttons.depressed & SW1) != 0U)
-        { /* is SW1 depressed? */
-            /* post the "button-pressed" event */
-            static Event const buttonPressedEvt = {BUTTON_PRESSED_SIG};
-            Active_post(AO_BlinkyButton, &buttonPressedEvt);
-        }
-        else
-        { /* the button is released */
-            /* post the "button-released" event */
-            static Event const buttonReleasedEvt = {BUTTON_RELEASED_SIG};
-            Active_post(AO_BlinkyButton, &buttonReleasedEvt);
-        }
-    }
+    taskENTER_CRITICAL(&isr_mutex);
+    tick_ctr = l_tick_ctr;
+    taskEXIT_CRITICAL(&isr_mutex);
+
+    return tick_ctr;
+}
+
+uint8_t BSP_SW1(void)
+{
+    uint8_t sw1;
+    taskENTER_CRITICAL(&isr_mutex);
+    sw1 = (uint8_t)gpio_get_level(PIN_SW1);
+    taskEXIT_CRITICAL(&isr_mutex);
+
+    return (sw1 != 0U) ? 0U : 1U; // my setup has the SW1 logic flipped from Miro's
 }
 
 void init_leds(void)
@@ -62,11 +51,10 @@ void init_switch(void)
     gpio_set_pull_mode(PIN_SW1, GPIO_PULLDOWN_ONLY);
 }
 
-void BSP_init(Active *blinky_button_active)
+void BSP_init()
 {
     init_leds();
     init_switch();
-    AO_BlinkyButton = blinky_button_active;
 }
 
 void BSP_ledRedOn(void)
