@@ -10,8 +10,10 @@ typedef uint16_t Signal;
 
 enum ReservedSignals
 {
-    INIT_SIG, /* Initialization signal */
-    USER_SIG  /* User defined signal */
+    INIT_SIG,  /* Initialization signal */
+    ENTRY_SIG, /* Trigger for the entry action */
+    EXIT_SIG,  /* Trigger for the exit action */
+    USER_SIG   /* User defined signal */
 };
 
 typedef struct

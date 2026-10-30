@@ -17,7 +17,9 @@ enum EventSignals
 {
     BUTTON_PRESSED_SIG = USER_SIG,
     BUTTON_RELEASED_SIG,
-    TIMEOUT_SIG
+    TIMEOUT_SIG,
+    /* ... */
+    MAX_SIG
 };
 
 void BSP_init(Active *blinky_button_active);
