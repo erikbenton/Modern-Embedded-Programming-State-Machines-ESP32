@@ -6,6 +6,8 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 
+/* ----------- Event Facilities ----------- */
+
 typedef uint16_t Signal;
 
 enum ReservedSignals
@@ -21,18 +23,43 @@ typedef struct
     Signal sig; /* event signal */
 } Event;
 
-typedef struct Active Active;
+/* ----------- Finite State Machine Facilities ----------- */
 
-typedef void (*DispatchHandler)(Active *const me, Event const *const e);
+typedef struct Fsm Fsm;
+
+typedef enum STATUS
+{
+    TRAN_STATUS,
+    HANDLED_STATUS,
+    IGNORED_STATUS,
+    INIT_STATUS
+} State;
+
+typedef State (*StateHandler)(Fsm *const me, Event const *const e);
+
+struct Fsm
+{
+    StateHandler state; /* the "state variable "*/
+};
+
+#define TRANSITION(target_) ((((Fsm *)me)->state) = (StateHandler)(target_), TRAN_STATUS)
+
+void Fsm_ctor(Fsm *const me, StateHandler initial);
+void Fsm_init(Fsm *const me, Event const *const e);
+void Fsm_dispatch(Fsm *const me, Event const *const e);
+
+/* ----------- Active Object Facilities ----------- */
+
+typedef struct Active Active;
 
 struct Active
 {
-    TaskHandle_t thread;      /* private thread */
-    QueueHandle_t queue;      /* private queue */
-    DispatchHandler dispatch; /* dispatch method for events */
+    Fsm super;           /* finite state machine */
+    TaskHandle_t thread; /* private thread */
+    QueueHandle_t queue; /* private queue */
 };
 
-void Active_ctor(Active *const me, DispatchHandler dispatch);
+void Active_ctor(Active *const me, StateHandler initial);
 void Active_start(Active *const me,
                   const char *const object_name,
                   const uint32_t stack_depth,
@@ -41,7 +68,7 @@ void Active_start(Active *const me,
                   size_t event_size);
 void Active_post(Active *const me, Event const *const e);
 
-/* Time Events */
+/* ----------- Time Event Facilities ----------- */
 
 typedef struct
 {

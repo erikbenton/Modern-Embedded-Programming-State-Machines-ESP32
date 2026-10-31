@@ -6,31 +6,21 @@
 
 #define INITIAL_BLINK_COUNT 5
 
-typedef struct
+typedef struct TimeBomb TimeBomb;
+
+struct TimeBomb
 {
     Active super;
-    enum
-    {
-        WAIT4BUTTON_STATE,
-        BLINK_STATE,
-        PAUSE_STATE,
-        BOOM_STATE,
-        /* ... */
-        MAX_STATE
-    } state;
     TimeEvent tEvt;
     uint32_t blink_counter;
-} TimeBomb;
-
-typedef enum STATUS
-{
-    TRAN_STATUS,
-    HANDLED_STATUS,
-    IGNORED_STATUS,
-    INIT_STATUS
-} Status;
+};
 
 void TimeBomb_ctor(TimeBomb *const me);
-typedef Status (*TimeBombAction)(TimeBomb *const me, Event const *const e);
+State TimeBomb_initial(TimeBomb *const me, Event const *const e);
+State TimeBomb_wait4Button(TimeBomb *const me, Event const *const e);
+State TimeBomb_blink(TimeBomb *const me, Event const *const e);
+State TimeBomb_pause(TimeBomb *const me, Event const *const e);
+State TimeBomb_boom(TimeBomb *const me, Event const *const e);
+typedef State (*TimeBombAction)(TimeBomb *const me, Event const *const e);
 
 #endif

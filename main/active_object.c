@@ -4,18 +4,49 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "portmacro.h"
+#include "assert.h"
 
-void Active_ctor(Active *const me, DispatchHandler dispatch)
+static Event const entry_evt = {ENTRY_SIG};
+static Event const exit_evt = {EXIT_SIG};
+
+void Fsm_ctor(Fsm *const me, StateHandler initial)
 {
-    me->dispatch = dispatch;
+    me->state = initial;
+}
+
+void Fsm_init(Fsm *const me, Event const *const e)
+{
+    assert(me->state != (StateHandler)0);
+    (me->state)(me, e);
+    (me->state)(me, &entry_evt);
+}
+
+void Fsm_dispatch(Fsm *const me, Event const *const e)
+{
+    State state;
+    StateHandler prev_state = me->state;
+
+    assert(me->state != (StateHandler)0);
+    state = (me->state)(me, e);
+
+    if (state == TRAN_STATUS)
+    {
+        assert(me->state != (StateHandler)0);
+        prev_state(me, &exit_evt);
+        (me->state)(me, &entry_evt);
+    }
+}
+
+void Active_ctor(Active *const me, StateHandler initial)
+{
+    Fsm_ctor(&(me->super), initial);
 }
 
 static void Active_eventLoop(void *pdata)
 {
     Active *me = (Active *)pdata; // get the active object
 
-    static Event const initEvt = {INIT_SIG};
-    (me->dispatch)(me, &initEvt); // dispatch initialization for the AO
+    Fsm_init(&(me->super), (Event *)0);
 
     // event loop message-pump
     for (;;)
@@ -28,7 +59,7 @@ static void Active_eventLoop(void *pdata)
         assert(err == pdTRUE);
 
         // dispatch the event
-        (me->dispatch)(me, &e);
+        Fsm_dispatch(&(me->super), &e);
     }
 }
 
